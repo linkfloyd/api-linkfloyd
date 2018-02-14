@@ -5,7 +5,7 @@ from google.appengine.ext import ndb
 from google.appengine.ext import db
 import cgi
 app = FlaskAPI(__name__)
-
+NUM_OF_LINKS_PER_PAGE = 20
 
 class Link(ndb.Model):
     owner = ndb.UserProperty()
@@ -23,7 +23,7 @@ class Link(ndb.Model):
 
 @app.route("/", methods=['GET', 'POST'])
 def links_list():
-    links = Link.query()
+    links = Link.query().order(-Link.created_at).fetch(NUM_OF_LINKS_PER_PAGE)
     return [link.serialize() for link in links]
 
 
