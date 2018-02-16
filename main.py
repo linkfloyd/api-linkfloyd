@@ -1,10 +1,13 @@
-from flask import request, url_for
-from flask_api import FlaskAPI, status, exceptions
+import sys
 
+sys.path.insert(0, 'lib')
+
+import falcon
+import falcon_jsonify
+
+from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import ndb
-from google.appengine.ext import db
-import cgi
-app = FlaskAPI(__name__)
+
 NUM_OF_LINKS_PER_PAGE = 20
 
 class Link(ndb.Model):
@@ -20,40 +23,27 @@ class Link(ndb.Model):
             'created_at': self.created_at
          }
 
+class HomeFeedSource(object):
+    def on_get(self, req, resp):
+        links = Link.query().order(-Link.created_at)\
+            .fetch(NUM_OF_LINKS_PER_PAGE)
+        resp.status = falcon.HTTP_200
+        resp.json = [link.serialize() for link in links]
 
-@app.route("/", methods=['GET', 'POST'])
-def links_list():
-    links = Link.query().order(-Link.created_at).fetch(NUM_OF_LINKS_PER_PAGE)
-    return [link.serialize() for link in links]
-
-
-@app.route("/<int:key>/", methods=['GET', 'PUT', 'DELETE'])
-def link_detail(key):
-    if request.method == 'PUT':
-        note = str(request.data.get('text', ''))
-        notes[key] = note
-        return note_repr(key)
-
-    elif request.method == 'DELETE':
-        notes.pop(key, None)
-        return '', status.HTTP_204_NO_CONTENT
-
-    # request.method == 'GET'
-    if key not in notes:
-        raise exceptions.NotFound()
-    return note_repr(key)
-
-
-@app.route("/create/", methods=['GET', 'POST'])
-def link_create():
-    if request.method == 'POST':
-        link = Link(title=request.data.get('title'),
-                    url=request.data.get('url'))
+class LinkCreateSource(object):
+    def on_post(self, req, resp):
+        link = Link(title=req.get_json('title'), url=req.get_json('url'))
         link.put()
-        return {'key': str(link.key.urlsafe())}
-    return {}
+        resp.json ={'key': str(link.key.urlsafe())}
 
+app = falcon.API(middleware=[
+    falcon_jsonify.Middleware(help_messages=True),
+])
 
+app.add_route('/', HomeFeedSource())
+app.add_route('/create/', LinkCreateSource())
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    httpd = simple_server.make_server('127.0.0.1', 8000, app)
+    httpd.serve_forever()
+
