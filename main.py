@@ -8,7 +8,7 @@ import falcon_jsonify
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import ndb
 
-NUM_OF_LINKS_PER_PAGE = 20
+NUM_OF_LINKS_PER_PAGE = 10
 
 class Link(ndb.Model):
     owner = ndb.UserProperty()
